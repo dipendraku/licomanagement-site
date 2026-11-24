@@ -114,7 +114,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-[var(--border)] px-5 py-5 text-center text-xs text-[var(--muted)]">
-        © {new Date().getFullYear()} Lico Management · Built and supported in Nepal · Support: {SUPPORT_EMAIL}
+        © {new Date().getFullYear()} Lico Management Pvt.Ltd. Developed By Lico Management Team
       </div>
     </footer>
   );

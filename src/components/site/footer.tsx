@@ -7,8 +7,14 @@ export function SiteFooter() {
     <footer className="mt-20 bg-[radial-gradient(circle_at_top_right,_#18457d_0%,_#011d45_48%,_#00142f_100%)] text-white">
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-14 lg:grid-cols-5 lg:px-8">
         <div className="reveal-up lg:col-span-1">
-          <div className="mb-4 grid h-12 w-12 overflow-hidden rounded-xl border border-white/20 bg-white">
-            <Image src="/logo.png" alt="Licomanagement logo" width={48} height={48} className="h-12 w-12 object-contain" />
+          <div className="mb-4 grid h-12 w-12 place-items-center overflow-hidden rounded-xl border border-white/20 bg-white p-1.5">
+            <Image
+              src="/logo.png"
+              alt="Licomanagement logo"
+              width={48}
+              height={35}
+              className="h-auto w-full object-contain"
+            />
           </div>
           <p className="max-w-xs text-sm leading-6 text-slate-200">
             Licomanagement Pvt. Ltd. delivers reliable cloud hosting and managed infrastructure for accounting and tax practices.
@@ -40,7 +46,7 @@ export function SiteFooter() {
 
       <div className="border-t border-white/15">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-center text-xs text-slate-300 lg:flex-row lg:px-8 lg:text-left">
-          <p>Copyright 2026 Licomanagement Pvt. Ltd. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Lico Management Pvt.Ltd. Developed By Lico Management Team</p>
           <p>Secure Cloud Hosting for Accounting Professionals</p>
         </div>
       </div>
