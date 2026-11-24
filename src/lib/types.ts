@@ -1,4 +1,5 @@
 export type ProfileRole = "customer" | "employee" | "super_admin";
+export const profileRoles: ProfileRole[] = ["customer", "employee", "super_admin"];
 export const staffRoles: ProfileRole[] = ["employee", "super_admin"];
 
 export type Profile = {

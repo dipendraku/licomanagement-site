@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { getPricing } from "@/lib/pricing-store";
+import { noIndexRobots } from "@/lib/seo";
 import { PricingEditor } from "./pricing-editor";
 
-export const metadata: Metadata = { title: "Pricing · Admin" };
+export const metadata: Metadata = { title: "Pricing Management", robots: noIndexRobots };
 export const dynamic = "force-dynamic";
 
 export default async function AdminPricingPage() {

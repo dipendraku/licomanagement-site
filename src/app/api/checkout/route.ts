@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name, school and a valid email are required." }, { status: 400 });
   }
 
-  const gateways = availableGateways().map((item) => item.id);
+  const gateways = (await availableGateways()).map((item) => item.id);
   const requested = text(body.gateway, 20) as Gateway | "";
   const gateway: Gateway = requested && gateways.includes(requested as Gateway) ? (requested as Gateway) : (gateways[0] as Gateway);
 
@@ -106,5 +106,5 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  return NextResponse.json({ gateways: availableGateways() });
+  return NextResponse.json({ gateways: await availableGateways() });
 }

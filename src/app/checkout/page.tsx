@@ -3,10 +3,12 @@ import { SiteFooter, SiteHeader } from "@/components/marketing/site-chrome";
 import { CheckoutForm, type PlanView } from "@/components/marketing/checkout-form";
 import { getPricing, priceOf } from "@/lib/pricing-store";
 import { availableGateways } from "@/lib/payments";
+import { noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Checkout · Lico Management",
+  title: "Secure Checkout",
   description: "Buy an EduCore SMS licence for your school.",
+  robots: noIndexRobots,
 };
 
 export const dynamic = "force-dynamic";
@@ -33,7 +35,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
 
   const requested = params.plan ?? "growth";
   const initialPlan = plans.some((plan) => plan.id === requested && plan.active) ? requested : (plans.find((p) => p.active)?.id ?? "growth");
-  const gateways = availableGateways().map((gateway) => ({ id: gateway.id, label: gateway.label, hint: gateway.hint }));
+  const gateways = (await availableGateways()).map((gateway) => ({ id: gateway.id, label: gateway.label, hint: gateway.hint }));
 
   return (
     <div className="min-h-screen">

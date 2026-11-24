@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { AdminNav } from "@/components/dashboard/admin-nav";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { adminNavFor } from "@/lib/admin-nav";
 import { createClient } from "@/lib/supabase/server";
-import { staffRoles } from "@/lib/types";
+import { staffRoles, type ProfileRole } from "@/lib/types";
+import { noIndexRobots } from "@/lib/seo";
+
+export const metadata: Metadata = { robots: noIndexRobots };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -19,17 +25,19 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     redirect("/account");
   }
 
-  const isSuperAdmin = profile.role === "super_admin";
-
-  const navItems = [
-    { label: "Overview", href: "/admin" },
-    { label: "Product Management", href: "/admin/products" },
-    { label: "Payment Management", href: "/admin/orders" },
-    ...(isSuperAdmin ? [{ label: "Notification Management", href: "/admin/notifications" }] : []),
-  ];
+  const role = profile.role as ProfileRole;
+  const isSuperAdmin = role === "super_admin";
 
   return (
-    <DashboardShell title={isSuperAdmin ? "Admin Dashboard" : "Staff Dashboard"} navItems={navItems}>
+    <DashboardShell
+      title={isSuperAdmin ? "Admin Dashboard" : "Staff Dashboard"}
+      subtitle={
+        isSuperAdmin
+          ? "Catalogue, orders, customers, notifications and integrations in one place."
+          : "Manage the catalogue and follow customer orders."
+      }
+      sidebar={<AdminNav items={adminNavFor(role)} />}
+    >
       {children}
     </DashboardShell>
   );

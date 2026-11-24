@@ -1,18 +1,20 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { getSiteSettings, type SiteSettings } from "@/lib/site-settings";
 
 /**
  * Transactional email for the marketing site (demo requests, orders, receipts).
  *
  * Priority:
- *  1. Gmail SMTP (GMAIL_USER + GMAIL_APP_PASSWORD)  -> default sender SUPPORT_EMAIL (support@gmail.com)
- *  2. Resend  (RESEND_API_KEY)                       -> REST call, no SMTP
- *  3. Brevo   (BREVO_API_KEY)                        -> REST call, no SMTP
+ *  1. SMTP configured in Admin -> Settings (host/port/user/password)
+ *  2. Gmail SMTP from env (GMAIL_USER + GMAIL_APP_PASSWORD)
+ *  3. Resend  (RESEND_API_KEY)                       -> REST call, no SMTP
+ *  4. Brevo   (BREVO_API_KEY)                        -> REST call, no SMTP
  *
  * With nothing configured the message is logged and reported as "skipped" so local
  * development and previews never fail because of mail.
  */
 
-export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL?.trim() || "support@gmail.com";
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL?.trim() || "support@licomanagement.com";
 export const SUPPORT_NAME = process.env.SUPPORT_NAME?.trim() || "EduCore SMS Support";
 export const SALES_EMAIL = process.env.SALES_EMAIL?.trim() || SUPPORT_EMAIL;
 
@@ -26,48 +28,49 @@ export interface MailMessage {
 
 export type MailResult = { ok: true; via: string } | { ok: false; via: string; error: string };
 
-let transporter: Transporter | null = null;
+function smtpTransport(settings: SiteSettings): { transport: Transporter; from: string } | null {
+  const { smtpHost: host, smtpUser: user, smtpPass: pass } = settings;
+  if (!host || !user || !pass) return null;
 
-function gmailTransport(): Transporter | null {
-  const user = process.env.GMAIL_USER?.trim();
-  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
-  if (!user || !pass) return null;
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: { user, pass },
-    });
-  }
-  return transporter;
+  const port = Number(settings.smtpPort) || (settings.smtpSecure === "false" ? 587 : 465);
+  const secure = settings.smtpSecure ? settings.smtpSecure === "true" : port === 465;
+
+  const transport = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+  });
+
+  return { transport, from: fromAddress(settings) };
 }
 
-function fromAddress(): string {
-  const user = process.env.GMAIL_USER?.trim();
-  if (user) return `"${SUPPORT_NAME}" <${user}>`;
-  if (process.env.RESEND_FROM_EMAIL) return `${SUPPORT_NAME} <${process.env.RESEND_FROM_EMAIL}>`;
-  if (process.env.BREVO_FROM_EMAIL) return `${SUPPORT_NAME} <${process.env.BREVO_FROM_EMAIL}>`;
-  return `${SUPPORT_NAME} <${SUPPORT_EMAIL}>`;
+function fromAddress(settings: SiteSettings): string {
+  const name = settings.smtpFromName || SUPPORT_NAME;
+  if (settings.smtpFromEmail) return `"${name}" <${settings.smtpFromEmail}>`;
+  if (process.env.RESEND_FROM_EMAIL) return `${name} <${process.env.RESEND_FROM_EMAIL}>`;
+  if (process.env.BREVO_FROM_EMAIL) return `${name} <${process.env.BREVO_FROM_EMAIL}>`;
+  return `${name} <${SUPPORT_EMAIL}>`;
 }
 
 export async function sendMail(message: MailMessage): Promise<MailResult> {
   const html = message.html ?? `<pre style="font:14px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap">${escapeHtml(message.text)}</pre>`;
 
-  const smtp = gmailTransport();
+  const settings = await getSiteSettings();
+  const smtp = smtpTransport(settings);
   if (smtp) {
     try {
-      await smtp.sendMail({
-        from: fromAddress(),
+      await smtp.transport.sendMail({
+        from: smtp.from,
         to: message.to,
         subject: message.subject,
         text: message.text,
         html,
         replyTo: message.replyTo,
       });
-      return { ok: true, via: "gmail-smtp" };
+      return { ok: true, via: "smtp" };
     } catch (error) {
-      return { ok: false, via: "gmail-smtp", error: error instanceof Error ? error.message : String(error) };
+      return { ok: false, via: "smtp", error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -77,7 +80,7 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { authorization: `Bearer ${resendKey}`, "content-type": "application/json" },
-        body: JSON.stringify({ from: fromAddress(), to: [message.to], subject: message.subject, text: message.text, html }),
+        body: JSON.stringify({ from: fromAddress(settings), to: [message.to], subject: message.subject, text: message.text, html }),
       });
       if (!response.ok) throw new Error(`resend ${response.status}: ${await response.text()}`);
       return { ok: true, via: "resend" };

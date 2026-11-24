@@ -1,14 +1,17 @@
 import crypto from "node:crypto";
+import { getSiteSettings } from "@/lib/site-settings";
 
 /**
  * Payment gateways for the marketing site.
  *
- * Configure through env; sandbox is the default so nothing can accidentally charge a card.
+ * Configuration comes from Admin -> Settings (stored in site_settings) with the env
+ * vars below as fallbacks. Sandbox is the default so nothing can accidentally charge
+ * a card.
  *
- *  eSewa   (Nepal)  ESEWA_ENV=test|live, ESEWA_MERCHANT_CODE, ESEWA_SECRET_KEY
+ *  eSewa   (Nepal)  esewaEnv=test|live, esewaMerchantCode, esewaSecret
  *                   test defaults: EPAYTEST / 8gBm/:&vY9n7/3X  (public sandbox credentials)
- *  Khalti  (Nepal)  KHALTI_ENV=test|live, KHALTI_SECRET_KEY  (test key from Khalti dashboard)
- *  Stripe  (intl)   STRIPE_SECRET_KEY, STRIPE_CURRENCY (default usd)
+ *  Khalti  (Nepal)  khaltiEnv=test|live, khaltiSecret
+ *  Stripe  (intl)   stripeSecret, stripeCurrency (default usd)
  *
  * eSewa v2 is a signed HTML form POST, so checkout returns { kind: "form" } for it and
  * { kind: "redirect" } for Khalti/Stripe. With nothing configured the demo gateway is used.
@@ -31,42 +34,54 @@ export type CheckoutSession =
   | { kind: "redirect"; gateway: Gateway; redirectUrl: string; reference: string }
   | { kind: "form"; gateway: Gateway; action: string; fields: Record<string, string>; reference: string };
 
+export interface GatewayConfig {
+  esewa: { live: boolean; merchantCode: string; secret: string; action: string };
+  khalti: { live: boolean; secret: string };
+  stripe: { secret: string; currency: string };
+}
+
 const env = (name: string) => process.env[name]?.trim() || "";
 
-export function esewaConfig() {
-  const live = env("ESEWA_ENV") === "live";
+export async function paymentConfig(): Promise<GatewayConfig> {
+  const settings = await getSiteSettings();
+  const isLive = (value: string) => value.trim().toLowerCase() === "live";
+  const esewaLive = isLive(settings.esewaEnv);
+
   return {
-    live,
-    merchantCode: env("ESEWA_MERCHANT_CODE") || (live ? "" : "EPAYTEST"),
-    secret: env("ESEWA_SECRET_KEY") || (live ? "" : "8gBm/:&vY9n7/3X"),
-    action: live
-      ? "https://epay.esewa.com.np/api/epay/main/v2/form"
-      : "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+    esewa: {
+      live: esewaLive,
+      merchantCode: settings.esewaMerchantCode || (esewaLive ? "" : "EPAYTEST"),
+      secret: settings.esewaSecret || (esewaLive ? "" : "8gBm/:&vY9n7/3X"),
+      action: esewaLive
+        ? "https://epay.esewa.com.np/api/epay/main/v2/form"
+        : "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+    },
+    khalti: { live: isLive(settings.khaltiEnv), secret: settings.khaltiSecret },
+    stripe: { secret: settings.stripeSecret, currency: settings.stripeCurrency || "usd" },
   };
 }
 
-export function availableGateways(): { id: Gateway; label: string; hint: string }[] {
+export async function availableGateways(): Promise<{ id: Gateway; label: string; hint: string }[]> {
+  const config = await paymentConfig();
   const list: { id: Gateway; label: string; hint: string }[] = [];
 
-  const esewa = esewaConfig();
-  if (esewa.merchantCode && esewa.secret) {
+  if (config.esewa.merchantCode && config.esewa.secret) {
     list.push({
       id: "esewa",
-      label: esewa.live ? "eSewa" : "eSewa sandbox",
-      hint: esewa.live ? "Nepal · wallet" : "Test wallet — no money moves",
+      label: config.esewa.live ? "eSewa" : "eSewa sandbox",
+      hint: config.esewa.live ? "Nepal · wallet" : "Test wallet — no money moves",
     });
   }
 
-  if (env("KHALTI_SECRET_KEY")) {
-    const live = env("KHALTI_ENV") === "live";
+  if (config.khalti.secret) {
     list.push({
       id: "khalti",
-      label: live ? "Khalti" : "Khalti sandbox",
-      hint: live ? "Nepal · wallet / bank" : "Test environment — no money moves",
+      label: config.khalti.live ? "Khalti" : "Khalti sandbox",
+      hint: config.khalti.live ? "Nepal · wallet / bank" : "Test environment — no money moves",
     });
   }
 
-  if (env("STRIPE_SECRET_KEY")) {
+  if (config.stripe.secret) {
     list.push({ id: "stripe", label: "Card (Stripe)", hint: "International cards" });
   }
 
@@ -76,8 +91,8 @@ export function availableGateways(): { id: Gateway; label: string; hint: string 
   return list;
 }
 
-export function defaultGateway(): Gateway {
-  return availableGateways()[0]!.id;
+export async function defaultGateway(): Promise<Gateway> {
+  return (await availableGateways())[0]!.id;
 }
 
 function reference(prefix: string): string {
@@ -94,8 +109,7 @@ export function esewaSignature(totalAmount: string | number, transactionUuid: st
   return crypto.createHmac("sha256", secret).update(message).digest("base64");
 }
 
-function esewaSession(order: OrderRequest): CheckoutSession {
-  const config = esewaConfig();
+function esewaSession(order: OrderRequest, config: GatewayConfig["esewa"]): CheckoutSession {
   const txn = reference("ESW");
   const amount = String(order.amount);
   const signedFieldNames = "total_amount,transaction_uuid,product_code";
@@ -122,13 +136,13 @@ function esewaSession(order: OrderRequest): CheckoutSession {
   };
 }
 
-async function khaltiSession(order: OrderRequest): Promise<CheckoutSession> {
+async function khaltiSession(order: OrderRequest, config: GatewayConfig["khalti"]): Promise<CheckoutSession> {
   const txn = reference("KHL");
-  const live = env("KHALTI_ENV") === "live";
+  const live = config.live;
   const base = live ? "https://khalti.com/api/v2" : "https://a.khalti.com/api/v2";
   const response = await fetch(`${base}/epayment/initiate/`, {
     method: "POST",
-    headers: { authorization: `Key ${env("KHALTI_SECRET_KEY")}`, "content-type": "application/json" },
+    headers: { authorization: `Key ${config.secret}`, "content-type": "application/json" },
     body: JSON.stringify({
       return_url: `${siteUrl()}/checkout/success?ref=${txn}&gateway=khalti`,
       website_url: siteUrl(),
@@ -145,9 +159,9 @@ async function khaltiSession(order: OrderRequest): Promise<CheckoutSession> {
   return { kind: "redirect", gateway: "khalti", redirectUrl: json.payment_url, reference: txn };
 }
 
-async function stripeSession(order: OrderRequest): Promise<CheckoutSession> {
+async function stripeSession(order: OrderRequest, config: GatewayConfig["stripe"]): Promise<CheckoutSession> {
   const txn = reference("STR");
-  const currency = env("STRIPE_CURRENCY") || "usd";
+  const currency = config.currency || "usd";
   const body = new URLSearchParams({
     mode: "payment",
     "line_items[0][quantity]": "1",
@@ -163,7 +177,7 @@ async function stripeSession(order: OrderRequest): Promise<CheckoutSession> {
   });
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
-    headers: { authorization: `Bearer ${env("STRIPE_SECRET_KEY")}`, "content-type": "application/x-www-form-urlencoded" },
+    headers: { authorization: `Bearer ${config.secret}`, "content-type": "application/x-www-form-urlencoded" },
     body,
   });
   const json = (await response.json()) as { url?: string; error?: { message?: string } };
@@ -172,13 +186,15 @@ async function stripeSession(order: OrderRequest): Promise<CheckoutSession> {
 }
 
 export async function createCheckout(order: OrderRequest, gateway: Gateway): Promise<CheckoutSession> {
+  const config = await paymentConfig();
+
   switch (gateway) {
     case "esewa":
-      return esewaSession(order);
+      return esewaSession(order, config.esewa);
     case "khalti":
-      return await khaltiSession(order);
+      return await khaltiSession(order, config.khalti);
     case "stripe":
-      return await stripeSession(order);
+      return await stripeSession(order, config.stripe);
     case "demo":
     default: {
       const txn = reference("DEMO");

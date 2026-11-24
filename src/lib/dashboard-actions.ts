@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { staffRoles, type OrderStatus } from "@/lib/types";
+import { SECRET_SETTING_KEYS, SETTING_KEYS, saveSiteSettings, type SettingKey } from "@/lib/site-settings";
+import { profileRoles, staffRoles, type OrderStatus, type ProfileRole } from "@/lib/types";
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -165,4 +166,52 @@ export async function broadcastNotification(formData: FormData) {
   });
 
   revalidatePath("/admin/notifications");
+}
+
+export async function updateUserRole(formData: FormData) {
+  const supabase = await requireSuperAdmin();
+  const userId = String(formData.get("userId") || "");
+  const role = String(formData.get("role") || "") as ProfileRole;
+
+  if (!profileRoles.includes(role)) {
+    redirect("/admin/users?error=role");
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user?.id === userId) {
+    redirect("/admin/users?error=self");
+  }
+
+  const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
+  if (error) {
+    redirect("/admin/users?error=save");
+  }
+
+  revalidatePath("/admin/users");
+  redirect("/admin/users?saved=1");
+}
+
+export async function saveSettings(formData: FormData) {
+  await requireSuperAdmin();
+
+  const values: Partial<Record<SettingKey, string>> = {};
+  for (const key of SETTING_KEYS) {
+    const raw = formData.get(key);
+    if (raw === null) continue;
+    const value = String(raw).trim();
+    // Blank secret inputs mean "keep the stored value"; blank plain fields clear them.
+    if (value === "" && SECRET_SETTING_KEYS.includes(key)) continue;
+    values[key] = value;
+  }
+
+  try {
+    await saveSiteSettings(values);
+  } catch {
+    redirect("/admin/settings?error=1");
+  }
+
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?saved=1");
 }
