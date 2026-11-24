@@ -60,6 +60,8 @@ create trigger on_auth_user_created
 --   update public.profiles set role = 'super_admin' where email = 'you@example.com';
 -- To make someone staff (product/order access only, no notification broadcast), run:
 --   update public.profiles set role = 'employee' where email = 'staff-member@example.com';
+-- To bootstrap the first admin without signing up first, run supabase/seed.sql (it
+-- creates admin@licomanagement.com as a confirmed super_admin, password in that file).
 
 -- ---------------------------------------------------------------------------
 -- products

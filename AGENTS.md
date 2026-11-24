@@ -6,7 +6,7 @@ Licomanagement Site is a small, content-driven marketing website for Licomanagem
 
 This repository uses:
 
-- Next.js `16.2.3` with the App Router and Turbopack.
+- Next.js `16.2.3` with the App Router. `next dev` uses Turbopack; `npm run build` builds with webpack because Turbopack's PostCSS/loader worker subprocesses fail on some shared hosts (Hostinger). `npm run build:turbo` is the Turbopack build for machines that support it.
 - React `19.2.4` and TypeScript in strict mode.
 - Tailwind CSS v4 through `@tailwindcss/postcss` and `src/app/globals.css`.
 - `next/font/google` with Manrope for body text and Plus Jakarta Sans for headings.
@@ -21,13 +21,16 @@ Most marketing pages are still static/presentational with no backend. The produc
 Run commands from the repository root:
 
 ```text
-npm run dev       # Start the local development server at http://localhost:3000
-npm run lint      # Run ESLint with Next core-web-vitals and TypeScript rules
-npm run build     # Create a production build
-npm run start     # Serve the production build
+npm run dev         # Start the local development server at http://localhost:3000 (Turbopack)
+npm run lint        # Run ESLint with Next core-web-vitals and TypeScript rules
+npm run build       # Create a production build with webpack (deployment-safe default)
+npm run build:turbo # Create a production build with Turbopack (faster; needs a host that allows child processes)
+npm run start       # Serve the production build
 ```
 
 Use `npm run lint` after source changes and `npm run build` for route, type, or build-system changes. Do not add a new formatter or test framework without a clear need.
+
+Keep `npm run build` on webpack: the Hostinger build host kills Turbopack's loader worker processes, which surfaces as `TurbopackInternalError` while parsing `src/app/globals.css`. Do not "fix" that by dropping PostCSS plugins from `postcss.config.mjs` — the CSS is valid and the same build passes locally with both bundlers.
 
 ## Application Structure
 
@@ -59,6 +62,7 @@ Use `npm run lint` after source changes and `npm run build` for route, type, or 
 - `src/components/products/product-grid.tsx` (client, fetches by category) and `product-actions.tsx` (client; gates Send Request/Direct Buy behind login, inserts into `orders`) back the `/products/**` routes.
 - `src/components/dashboard/dashboard-shell.tsx` is the shared sidebar-nav layout for both `/account` and `/admin`. `product-form.tsx` backs product create/edit in `/admin/products`.
 - `supabase/schema.sql` is the full database schema (tables, RLS policies, triggers, and the 42-product seed data) — run manually in the Supabase SQL editor; nothing in this repo executes it automatically.
+- `supabase/seed.sql` bootstraps the first `super_admin` login (`admin@licomanagement.com`) directly in `auth.users`/`auth.identities` with a bcrypt password and a matching `profiles` row. The password is read from the `lico.seed_admin_password` session setting so no credential is committed; it is idempotent and is also the file the Supabase CLI runs as its seed on `supabase db reset`.
 
 ## Backend / Supabase
 
@@ -72,7 +76,7 @@ Use `npm run lint` after source changes and `npm run build` for route, type, or 
 - Tables: `profiles` (auto-created per signup via a trigger, including Google sign-ups), `products`, `orders`, `notifications`. RLS is enabled on all four, enforcing the role matrix above at the database layer (not just in the UI) — see `supabase/schema.sql` for the exact policies. Server Actions in `dashboard-actions.ts` re-check the role too (defense in depth), redirecting rather than relying on RLS alone to fail silently.
 - "Direct Buy" does **not** process any real payment — by design (see chat history), it inserts an `orders` row (`type: 'buy'`, `status: 'pending'`) for staff follow-up, identical in spirit to "Send Request" (`type: 'request'`). Do not add a payment gateway or imply one exists without an explicit request.
 - A Postgres trigger on `orders` inserts a `role_target: 'admin'` row into `notifications` automatically (visible to `super_admin` only); `/admin/notifications` also lets `super_admin`s broadcast a `role_target: 'customer'` notification to every customer dashboard.
-- Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (see `.env.example`; this is Supabase's current name for the client-safe key, formerly called the "anon key"). No service role/secret key is used anywhere — every dashboard operation relies on RLS policies evaluated for the signed-in user, not a privilege-bypassing key.
+- Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (see `.env.example`; this is Supabase's current name for the client-safe key, formerly called the "anon key"). `.env.example` also declares the server-only `SUPABASE_SERVICE_ROLE_KEY` for trusted scripts/maintenance, but no app code reads it — every dashboard operation relies on RLS policies evaluated for the signed-in user, not a privilege-bypassing key. `NEXT_PUBLIC_SITE_URL` sets the canonical production origin used by SEO metadata, `sitemap.xml`, `robots.txt` and Open Graph images (falls back to `https://licomanagement.com`).
 - Data-fetching split: pages that must redirect/404 based on real data (`/products/[category]/[product]`, `/account/**`, `/admin/**`) use the server client in a Server Component so an unconfigured Supabase project fails gracefully per-request instead of breaking `npm run build` (these routes have no `generateStaticParams` and read `cookies()`, so they're already dynamic, matching the existing `/[slug]` route). `ProductGrid` fetches client-side instead so the category listing page never blocks on the server render.
 
 ## Route Catalog
