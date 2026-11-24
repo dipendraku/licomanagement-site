@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+:root {
+  --base-bg: #f5f8ff;
+  --brand-blue: #1355b2;
+  --brand-blue-strong: #0d3f88;
+  --brand-orange: #fa9539;
+  --ink: #0f172a;
+
+  /* marketing surface tokens (used by the storefront pages) */
+  --background: #f5f8ff;
+  --foreground: #0f172a;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: #ffffff;
+  --border: rgba(15, 23, 42, 0.12);
+  --muted: #53627a;
+  --primary: #1355b2;
+  --primary-foreground: #f4f8ff;
+  --secondary: #dbe9ff;
+  --accent: #fa9539;
+  --danger: #c8402f;
+}
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-jakarta);
+}
+
+body {
+  background: var(--base-bg);
+  color: var(--ink);
+  font-family: var(--font-manrope), sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-jakarta), sans-serif;
+}
+
+.container-pad {
+  @apply mx-auto w-full max-w-7xl px-4 lg:px-8;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: #d4e5ff;
+  color: #082957;
+}
+
+.section-title {
+  font-size: clamp(1.9rem, 1.3rem + 1.7vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.section-copy {
+  font-size: clamp(1rem, 0.95rem + 0.18vw, 1.12rem);
+  line-height: 1.7;
+}
+
+.reveal-up {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: reveal-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.reveal-delay-1 {
+  animation-delay: 0.08s;
+}
+
+.reveal-delay-2 {
+  animation-delay: 0.16s;
+}
+
+.reveal-delay-3 {
+  animation-delay: 0.24s;
+}
+
+.reveal-delay-4 {
+  animation-delay: 0.32s;
+}
+
+.orb-a {
+  animation: orb-a 8s ease-in-out infinite;
+}
+
+.orb-b {
+  animation: orb-b 9s ease-in-out infinite;
+}
+
+.card-lift {
+  transition: transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 26px rgba(2, 18, 45, 0.12);
+  border-color: #cbdaf8;
+}
+
+@keyframes reveal-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes orb-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(16px, -14px, 0) scale(1.05);
+  }
+}
+
+@keyframes orb-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-14px, 12px, 0) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-up,
+  .orb-a,
+  .orb-b,
+  .card-lift {
+    animation: none;
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}

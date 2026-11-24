@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 460" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#082957"/>
+      <stop offset="1" stop-color="#236FD9"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(360 150) rotate(90) scale(150 220)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF3CD"/>
+      <stop offset="1" stop-color="#FA9539" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="720" height="460" rx="34" fill="url(#bg)"/>
+  <ellipse cx="360" cy="150" rx="230" ry="150" fill="url(#glow)"/>
+  <line x1="360" y1="60" x2="360" y2="20" stroke="#F9FBFF" stroke-width="6" stroke-linecap="round"/>
+  <g transform="translate(280 60)">
+    <circle cx="80" cy="90" r="80" fill="#F6FBFF"/>
+    <circle cx="80" cy="90" r="80" fill="#FFE9C2" fill-opacity="0.35"/>
+    <path d="M50 150h60l-14 46H64z" fill="#DAEAFF"/>
+    <rect x="58" y="196" width="44" height="16" rx="8" fill="#B7D2F8"/>
+  </g>
+  <text x="40" y="58" fill="#E9F1FF" font-size="26" font-family="Arial, sans-serif" font-weight="700">Light Solution</text>
+</svg>
