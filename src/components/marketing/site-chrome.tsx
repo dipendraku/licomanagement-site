@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { SUPPORT_EMAIL } from "@/lib/mail";
 
 const NAV = [
@@ -9,17 +11,20 @@ const NAV = [
   { href: "/contact", label: "Contact" },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({ actions }: { actions?: ReactNode }) {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_82%,transparent)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5">
-        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 10.5 12 4l9 6.5" />
-              <path d="M5 10v9h14v-9" />
-              <path d="M9.5 19v-5h5v5" />
-            </svg>
+        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight" aria-label="Licomanagement home">
+          <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--border)] bg-white p-1.5 shadow-sm">
+            <Image
+              src="/logo.png"
+              alt="Licomanagement logo"
+              width={40}
+              height={29}
+              className="h-auto w-full object-contain"
+              priority
+            />
           </span>
           <span className="text-[15px] leading-tight">
             Lico <span className="text-[var(--muted)]">Management</span>
@@ -35,18 +40,22 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/login"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--secondary)] hover:text-[var(--foreground)] sm:block"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/contact"
-            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition hover:brightness-110"
-          >
-            Book a demo
-          </Link>
+          {actions ?? (
+            <>
+              <Link
+                href="/login"
+                className="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--secondary)] hover:text-[var(--foreground)] sm:block"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/contact"
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition hover:brightness-110"
+              >
+                Book a demo
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -59,7 +68,15 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 font-semibold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)]">L</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-white p-1 ring-1 ring-[var(--border)]">
+              <Image
+                src="/logo.png"
+                alt="Licomanagement logo"
+                width={32}
+                height={23}
+                className="h-auto w-full object-contain"
+              />
+            </span>
             Lico Management
           </div>
           <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
