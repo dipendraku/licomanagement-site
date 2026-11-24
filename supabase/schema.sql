@@ -26,12 +26,28 @@ alter table public.profiles add constraint profiles_role_check check (role in ('
 
 alter table public.profiles enable row level security;
 
+-- Role lookup for RLS policies. SECURITY DEFINER so reading profiles inside a
+-- profiles policy does not re-enter row level security (which Postgres rejects
+-- with "infinite recursion detected in policy for relation profiles", 42P17).
+create or replace function public.current_profile_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+revoke all on function public.current_profile_role() from public;
+grant execute on function public.current_profile_role() to anon, authenticated, service_role;
+
 drop policy if exists "profiles_select_own_or_admin" on public.profiles;
 drop policy if exists "profiles_select_own_or_staff" on public.profiles;
 create policy "profiles_select_own_or_staff" on public.profiles
   for select using (
     auth.uid() = id
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('employee', 'super_admin'))
+    or public.current_profile_role() in ('employee', 'super_admin')
   );
 
 drop policy if exists "profiles_update_own" on public.profiles;
